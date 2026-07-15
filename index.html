@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50 text-slate-900">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HomeWk — Homework & Practice Portal</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Inter & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-display {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .font-mono {
+      font-family: 'Fira Code', monospace;
+    }
+    /* Hide scrollbars but keep functionality */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col antialiased">
+
+  <!-- Load Supabase configuration first -->
+  <script src="supabase-config.js"></script>
+
+  <!-- Notification Toast -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- STAGE 1: Configuration Alert & Setup Instructions (Dismissible Banner) -->
+  <div id="config-banner" class="bg-amber-500 text-slate-950 font-medium px-4 py-2.5 text-center text-xs md:text-sm flex flex-col md:flex-row items-center justify-center gap-2 relative z-50 shadow-md">
+    <span>
+      <strong>Supabase is not configured yet!</strong> Please edit <code class="bg-amber-600/30 px-1 py-0.5 rounded font-mono">supabase-config.js</code> with your own Supabase project URL and Anon Key.
+    </span>
+    <div class="flex gap-2 mt-1.5 md:mt-0">
+      <button onclick="enableDemoMode('student')" class="bg-slate-900 text-white px-3 py-1 rounded text-xs font-bold hover:bg-slate-800 transition">
+        🚀 Run Student Demo
+      </button>
+      <button onclick="enableDemoMode('admin')" class="bg-emerald-800 text-white px-3 py-1 rounded text-xs font-bold hover:bg-emerald-950 transition">
+        🎓 Run Teacher Demo
+      </button>
+      <button onclick="dismissConfigBanner()" class="text-slate-900 hover:text-slate-850 px-2 py-1 rounded text-xs">
+        Dismiss
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN LOADING OVERLAY -->
+  <div id="global-loading" class="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-all duration-300">
+    <div class="w-12 h-12 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+    <p class="mt-4 text-sm font-medium text-slate-600 font-display">Initializing HomeWk Portal...</p>
+  </div>
+
+  <!-- AUTH SCREEN -->
+  <div id="auth-screen" class="hidden min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 mb-4">
+        <i data-lucide="graduation-cap" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-3xl font-bold font-display text-slate-900 tracking-tight">Welcome to HomeWk</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        Homework & AI Practice Portal for Class 11-12
+      </p>
+    </div>
+
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div class="bg-white py-8 px-4 shadow-xl sm:rounded-2xl sm:px-10 border border-slate-100">
+        <!-- Auth Tabs -->
+        <div class="flex border-b border-slate-200 mb-6">
+          <button id="tab-login" onclick="switchAuthTab('login')" class="w-1/2 pb-3 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600">
+            Sign In
+          </button>
+          <button id="tab-signup" onclick="switchAuthTab('signup')" class="w-1/2 pb-3 text-center font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300">
+            Create Account
+          </button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+          <div>
+            <label for="auth-email" class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Email Address</label>
+            <div class="mt-1">
+              <input id="auth-email" name="email" type="email" autocomplete="email" required 
+                class="block w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 text-slate-900 sm:text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label for="auth-password" class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Password</label>
+            <div class="mt-1">
+              <input id="auth-password" name="password" type="password" autocomplete="current-password" required 
+                class="block w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 text-slate-900 sm:text-sm">
+            </div>
+          </div>
+
+          <!-- SIGNUP ONLY FIELDS -->
+          <div id="signup-fields" class="hidden space-y-4 pt-2 border-t border-slate-100">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Choose Role</label>
+              <div class="mt-2 grid grid-cols-2 gap-3">
+                <label class="relative flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 focus-within:ring-2 focus-within:ring-indigo-600">
+                  <input type="radio" name="role" value="student" checked onchange="toggleSignupRoleFields()" class="sr-only">
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="user" class="w-4 h-4 text-slate-500"></i>
+                    <span class="text-sm font-medium text-slate-900">Student</span>
+                  </div>
+                </label>
+                <label class="relative flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 focus-within:ring-2 focus-within:ring-indigo-600">
+                  <input type="radio" name="role" value="admin" onchange="toggleSignupRoleFields()" class="sr-only">
+                  <div class="flex items-center gap-2">
+                    <i data-lucide="shield" class="w-4 h-4 text-slate-500"></i>
+                    <span class="text-sm font-medium text-slate-900">Teacher / Admin</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div id="student-class-fields" class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="student-class" class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Class</label>
+                <select id="student-class" name="class" 
+                  class="mt-1 block w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-900 sm:text-sm">
+                  <option value="11">Class 11</option>
+                  <option value="12" selected>Class 12</option>
+                </select>
+              </div>
+              <div>
+                <label for="student-section" class="block text-xs font-semibold uppercase tracking-wider text-slate-600">Section</label>
+                <input id="student-section" name="section" type="text" placeholder="e.g. Science-A"
+                  class="mt-1 block w-full px-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 sm:text-sm">
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" id="auth-submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 transition">
+              Sign In
+            </button>
+          </div>
+        </form>
+
+        <!-- Mode Toggle Trigger Info inside Form Card -->
+        <div class="mt-6 flex flex-col items-center justify-center gap-3 border-t border-slate-100 pt-6">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+            Zero-Auth Sandbox Playgrounds
+          </p>
+          <div class="flex gap-2.5">
+            <button onclick="enableDemoMode('student')" class="text-xs font-bold text-indigo-600 hover:text-indigo-850 bg-indigo-50 border border-indigo-100 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all">
+              <i data-lucide="user" class="w-3.5 h-3.5"></i>
+              Student Sandbox
+            </button>
+            <button onclick="enableDemoMode('admin')" class="text-xs font-bold text-emerald-650 hover:text-emerald-800 bg-emerald-50 border border-emerald-100 px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all">
+              <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+              Teacher Sandbox
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app-screen" class="hidden flex-1 flex flex-col min-h-0 bg-[#F8FAFC] text-slate-900 overflow-hidden">
+    
+    <!-- Top Header Navigation -->
+    <header class="flex items-center justify-between px-6 md:px-8 py-4 bg-white border-b border-slate-200 shrink-0">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-xl font-display shadow-md shadow-indigo-150">Hw</div>
+        <div>
+          <h1 class="text-xl font-black tracking-tight text-slate-850 underline decoration-indigo-200 decoration-4 underline-offset-4 font-display">HomeWk <span class="text-slate-400 font-semibold ml-1 text-xs uppercase tracking-wider font-sans" id="header-portal-label">Portal</span></h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 md:gap-6">
+        <div class="hidden sm:flex gap-2">
+          <div class="px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-full text-indigo-700 text-[10px] font-bold uppercase tracking-wider">Class 11-12</div>
+          <div class="px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-emerald-700 text-[10px] font-bold uppercase tracking-wider">AI Enabled</div>
+        </div>
+        <div class="flex items-center gap-3 border-l border-slate-200 pl-4 md:pl-6">
+          <div class="text-right hidden md:block">
+            <p class="text-xs font-bold text-slate-800" id="header-user-email">student@school.edu</p>
+            <p class="text-[9px] text-slate-400 uppercase font-black tracking-widest" id="header-user-role">Student</p>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-indigo-50 border border-slate-200 text-indigo-700 font-bold flex items-center justify-center shadow-sm text-xs font-display" id="header-avatar-initials">S</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- App Inner Workspace -->
+    <div class="flex-1 flex flex-col md:flex-row min-h-0 bg-[#F8FAFC]">
+      <!-- SIDEBAR NAVIGATION -->
+      <aside class="w-full md:w-64 bg-white text-slate-800 flex flex-col flex-shrink-0 border-b md:border-b-0 md:border-r border-slate-200 md:my-6 md:ml-6 md:rounded-[2rem] md:border md:shadow-sm">
+        <div class="p-4 flex items-center justify-between border-b border-slate-100 md:hidden">
+          <span class="text-xs font-black uppercase tracking-widest text-slate-400">Navigation Menu</span>
+          <button onclick="handleLogout()" class="text-slate-500 hover:text-slate-850 p-1.5 rounded-lg">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Inner User Metadata Badge inside Sidebar on Desktop -->
+        <div class="p-5 border-b border-slate-100 bg-slate-50/50 hidden md:block rounded-t-[2rem]">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-750 border border-indigo-200 flex items-center justify-center font-bold text-sm font-display shadow-sm" id="user-avatar-initials-badge">
+              S
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-bold text-slate-850 truncate" id="user-email-display">student@school.edu</p>
+              <p class="text-[10px] text-slate-400 font-bold truncate uppercase tracking-wider" id="user-class-display">Class 12 • Section A</p>
+            </div>
+          </div>
+          <!-- Info alert if using Demo Mode -->
+          <div id="demo-badge" class="hidden mt-3 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-100 text-[9px] text-amber-700 font-black tracking-widest uppercase text-center">
+            ⚡ Demo Sandbox
+          </div>
+        </div>
+
+        <!-- Navigation Links -->
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+          <!-- Student Tabs -->
+          <div id="student-nav-items" class="space-y-1">
+            <button onclick="switchTab('student-dashboard')" id="nav-student-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition text-slate-600 hover:bg-slate-50 hover:text-slate-800">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 text-indigo-500"></i>
+              My Assignments
+            </button>
+          </div>
+
+          <!-- Admin Tabs -->
+          <div id="admin-nav-items" class="hidden space-y-1">
+            <button onclick="switchTab('admin-assignments')" id="nav-admin-assignments" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition text-slate-600 hover:bg-slate-50 hover:text-slate-800">
+              <i data-lucide="book-open" class="w-4 h-4 text-indigo-500"></i>
+              Manage Assignments
+            </button>
+            <button onclick="switchTab('admin-create')" id="nav-admin-create" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition text-slate-600 hover:bg-slate-50 hover:text-slate-800">
+              <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-500"></i>
+              New Assignment
+            </button>
+          </div>
+        </nav>
+
+        <!-- Footer Action -->
+        <div class="p-4 border-t border-slate-100 mt-auto hidden md:block">
+          <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-slate-500 hover:bg-rose-50 hover:text-rose-600 transition-all duration-300">
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-500"></i>
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <!-- MAIN INTERACTIVE CONTENT STAGE -->
+      <main class="flex-1 flex flex-col min-w-0 bg-[#F8FAFC] overflow-y-auto p-6 md:p-8">
+      
+      <!-- ============================================= -->
+      <!-- STUDENT DASHBOARD TAB -->
+      <!-- ============================================= -->
+      <section id="tab-student-dashboard" class="space-y-8 animate-fade-in">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black font-display tracking-tight text-slate-850 underline decoration-indigo-200 decoration-4 underline-offset-4 inline-block">Your Study Center</h2>
+            <p class="text-slate-500 text-sm mt-2">Class-specific homework and automated practice worksheets.</p>
+          </div>
+          <!-- Quick Filter Status -->
+          <div class="flex items-center gap-2 bg-white px-4.5 py-2.5 rounded-full border border-slate-200 shadow-sm self-start">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider" id="student-live-indicator">CBSE Board Portal</span>
+          </div>
+        </div>
+
+        <!-- Student Stats Widgets -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <!-- Pending Worksheets Bento Card -->
+          <div class="bg-indigo-600 rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-lg shadow-indigo-100 relative overflow-hidden group hover:scale-[1.01] transition-all duration-300">
+            <div class="flex items-center justify-between z-10">
+              <span class="text-indigo-150 text-[10px] font-black uppercase tracking-widest">Pending Homework</span>
+              <div class="w-10 h-10 rounded-2xl bg-indigo-500/30 flex items-center justify-center text-white">
+                <i data-lucide="alert-circle" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div class="mt-8 z-10">
+              <p id="student-stat-pending" class="text-4xl font-black font-display text-white">0</p>
+              <p class="text-[9px] text-indigo-200 uppercase font-black tracking-wider mt-1.5">Requires Completion</p>
+            </div>
+            <div class="absolute -bottom-6 -right-6 w-24 h-24 bg-indigo-500/25 rounded-full blur-2xl"></div>
+          </div>
+
+          <!-- Submitted Work Bento Card -->
+          <div class="bg-white rounded-[2rem] border border-slate-200 p-6 flex flex-col justify-between shadow-sm hover:scale-[1.01] transition-all duration-300">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Submitted Work</span>
+              <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                <i data-lucide="clock" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div class="mt-8">
+              <p id="student-stat-submitted" class="text-4xl font-black font-display text-slate-800">0</p>
+              <p class="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-1.5">Awaiting Review</p>
+            </div>
+          </div>
+
+          <!-- Evaluated & Checked Bento Card -->
+          <div class="bg-slate-900 rounded-[2rem] p-6 text-white flex flex-col justify-between shadow-sm relative overflow-hidden hover:scale-[1.01] transition-all duration-300">
+            <div class="flex items-center justify-between z-10">
+              <span class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Checked & Graded</span>
+              <div class="w-10 h-10 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
+                <i data-lucide="check-square" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div class="mt-8 z-10">
+              <p id="student-stat-checked" class="text-4xl font-black font-display text-white">0</p>
+              <p class="text-[9px] text-slate-500 uppercase font-black tracking-wider mt-1.5">Completed Practice</p>
+            </div>
+            <div class="absolute -bottom-6 -right-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl"></div>
+          </div>
+        </div>
+
+        <!-- Assignments Grid -->
+        <div class="space-y-6 pt-2">
+          <h3 class="text-sm font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            <i data-lucide="clipboard-list" class="w-4.5 h-4.5 text-indigo-500"></i>
+            Class Homework & Worksheets
+          </h3>
+          
+          <div id="student-assignments-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Dynamic Inject -->
+          </div>
+
+          <div id="student-empty-state" class="hidden bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center">
+            <i data-lucide="book-open-check" class="w-12 h-12 text-slate-400 mx-auto mb-3"></i>
+            <h4 class="text-lg font-bold font-display text-slate-800">All Homework Completed!</h4>
+            <p class="text-slate-500 text-sm mt-1">There are no assignments published for your class/section right now.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- ADMIN ASSIGNMENTS LIST (TEACHER VIEW) -->
+      <!-- ============================================= -->
+      <section id="tab-admin-assignments" class="hidden space-y-8 animate-fade-in">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-black font-display tracking-tight text-slate-850 underline decoration-indigo-200 decoration-4 underline-offset-4 inline-block">Manage Homework Portals</h2>
+            <p class="text-slate-500 text-sm mt-2">Review assigned questions, trace student submissions, and grade work.</p>
+          </div>
+        </div>
+
+        <!-- Filters Block (Bento-style wrapper) -->
+        <div class="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <label for="filter-class" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Class Filter</label>
+            <select id="filter-class" onchange="loadAdminAssignments()" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+              <option value="All">All Classes</option>
+              <option value="11">Class 11</option>
+              <option value="12">Class 12</option>
+            </select>
+          </div>
+          <div>
+            <label for="filter-section" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Section Filter</label>
+            <input type="text" id="filter-section" oninput="loadAdminAssignments()" placeholder="e.g. Science-A" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+          </div>
+          <div>
+            <label for="filter-subject" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Subject Filter</label>
+            <input type="text" id="filter-subject" oninput="loadAdminAssignments()" placeholder="e.g. Physics" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+          </div>
+        </div>
+
+        <!-- Assignments Grid (Admin View) -->
+        <div id="admin-assignments-grid" class="grid grid-cols-1 gap-6">
+          <!-- Dynamic Inject -->
+        </div>
+
+        <div id="admin-empty-state" class="hidden bg-white rounded-[2rem] border border-dashed border-slate-200 p-12 text-center shadow-sm">
+          <i data-lucide="plus-circle" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+          <h4 class="text-lg font-bold font-display text-slate-800">No Assignments Created</h4>
+          <p class="text-slate-500 text-sm mt-1">Publish your first assignment to generate AI homework worksheets.</p>
+          <button onclick="switchTab('admin-create')" class="mt-5 inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold text-xs hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">
+            <i data-lucide="plus" class="w-4 h-4"></i> Create New
+          </button>
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- ADMIN CREATE NEW ASSIGNMENT (WITH AI WORKFLOW) -->
+      <!-- =========================================      <section id="tab-admin-create" class="hidden space-y-8 animate-fade-in">
+        <div>
+          <h2 class="text-2xl font-black font-display tracking-tight text-slate-850 underline decoration-indigo-200 decoration-4 underline-offset-4 inline-block">Create AI-Powered Assignment</h2>
+          <p class="text-slate-500 text-sm mt-2">Provide previous year paper PDF to leverage Gemini and generate matching worksheets.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          <!-- Assignment Meta Details -->
+          <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-5">
+              <h3 class="text-sm font-black uppercase tracking-widest text-slate-800 border-b border-slate-100 pb-4">Assignment Setup</h3>
+              
+              <div>
+                <label for="create-subject" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1.5">Subject</label>
+                <input type="text" id="create-subject" placeholder="e.g. Physics, Mathematics" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label for="create-class" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1.5">Target Class</label>
+                  <select id="create-class" class="block w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+                    <option value="11">Class 11</option>
+                    <option value="12" selected>Class 12</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="create-section" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1.5">Section</label>
+                  <input type="text" id="create-section" placeholder="Science-A" class="block w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+                </div>
+              </div>
+
+              <div>
+                <label for="create-deadline" class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1.5">Submission Deadline</label>
+                <input type="datetime-local" id="create-deadline" class="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-medium">
+              </div>
+
+              <div class="pt-2">
+                <label class="block text-[10px] uppercase font-black text-slate-400 tracking-widest mb-2">Previous Year Paper (PDF Source)</label>
+                <div id="dropzone-paper" class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center cursor-pointer hover:border-indigo-500 hover:bg-indigo-50/20 transition-all bg-slate-50/40 shadow-inner">
+                  <input type="file" id="paper-file-input" accept="application/pdf" class="hidden" onchange="handlePaperUpload(this)">
+                  <div onclick="document.getElementById('paper-file-input').click()" class="space-y-2">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mx-auto">
+                      <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                    </div>
+                    <p class="text-xs font-bold text-indigo-600">Upload PDF source paper</p>
+                    <p class="text-[10px] text-slate-400" id="paper-filename">PDF standard limit 50MB</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="pt-2">
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-[10px] uppercase font-black text-slate-400 tracking-widest">AI Target Count</label>
+                  <span id="count-value" class="text-[10px] font-black uppercase tracking-widest bg-indigo-50 border border-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full">3 Questions</span>
+                </div>
+                <input type="range" id="create-ai-count" min="2" max="6" value="3" oninput="document.getElementById('count-value').innerText = this.value + ' Questions per type'" class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                <p class="text-[10px] text-slate-400 mt-2">Generates [count] Practice and [count] Homework questions matching PDF style.</p>
+              </div>
+
+              <button type="button" onclick="triggerAiGeneration()" class="w-full mt-4 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-none transition-all">
+                <i data-lucide="sparkles" class="w-4 h-4 text-indigo-200"></i>
+                Generate Matching Questions
+              </button>
+            </div>
+          </div>
+
+          <!-- Question Compilation and Review Panel (Double Span) -->
+          <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Dynamic AI Processing Screen -->
+            <div id="ai-generating-screen" class="hidden bg-slate-900 text-slate-200 rounded-[2rem] p-8 md:p-12 text-center space-y-6 shadow-xl border border-slate-800 relative overflow-hidden">
+              <div class="relative w-24 h-24 mx-auto flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 animate-ping"></div>
+                <div class="absolute inset-2 rounded-full border-4 border-indigo-500/30 animate-pulse"></div>
+                <div class="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/40">
+                  <i data-lucide="cpu" class="w-8 h-8 animate-spin-slow"></i>
+                </div>
+              </div>
+              <div class="space-y-2">
+                <h3 class="text-xl font-bold font-display text-white" id="ai-loading-title">Gemini is Reading PDF...</h3>
+                <p class="text-sm text-slate-400 max-w-md mx-auto" id="ai-loading-subtitle">Extracting examination structure, cognitive style, and core curriculum syllabus.</p>
+              </div>
+              <!-- Simulated multi-state progress tracker -->
+              <div class="flex items-center justify-center gap-3 text-xs font-semibold max-w-sm mx-auto bg-slate-950/40 p-3 rounded-xl border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span id="ai-status-step" class="text-slate-300">Phase 1/3: Analyzing syllabus tree</span>
+              </div>
+            </div>
+
+            <!-- Editable Compilation List -->
+            <div id="ai-questions-review-card" class="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 class="text-sm font-black uppercase tracking-widest text-slate-800">Worksheet Compile List</h3>
+                  <p class="text-xs text-slate-400 mt-1">Edit, add, or remove questions prior to publishing the assignment.</p>
+                </div>
+                <button onclick="addCustomQuestionReview()" class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-650 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-full border border-indigo-100 transition shadow-sm">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i> Custom Question
+                </button>
+              </div>
+
+              <!-- Compilation segments -->
+              <div class="space-y-6">
+                <!-- Practice Questions -->
+                <div>
+                  <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                    Practice Questions (In-Class Work)
+                  </h4>
+                  <div id="review-list-practice" class="space-y-3">
+                    <p class="text-sm text-slate-400 italic">No questions added yet. Call the AI generator or click "Custom Question" above.</p>
+                  </div>
+                </div>
+
+                <!-- Homework Questions -->
+                <div>
+                  <h4 class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    Homework Questions (After-School Tasks)
+                  </h4>
+                  <div id="review-list-homework" class="space-y-3">
+                    <p class="text-sm text-slate-400 italic">No questions added yet. Call the AI generator or click "Custom Question" above.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit Form Trigger -->
+              <div class="pt-6 border-t border-slate-150 flex justify-end gap-3">
+                <button onclick="switchTab('admin-assignments')" class="px-5 py-3 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-all">
+                  Cancel
+                </button>
+                <button onclick="publishAssignmentAndQuestions()" class="px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition flex items-center gap-2 shadow-lg shadow-indigo-100 hover:shadow-none">
+                  <i data-lucide="check" class="w-4 h-4"></i>
+                  Publish & Deploy Worksheet
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================= -->
+      <!-- ADMIN VIEW SUBMISSIONS (SUBPAGES IN IFRAME) -->
+      <!-- ============================================= -->
+      <section id="tab-admin-submissions" class="hidden space-y-8 animate-fade-in">
+        <div class="flex items-center justify-between">
+          <button onclick="switchTab('admin-assignments')" class="inline-flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-indigo-650 hover:text-indigo-800 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to assignments
+          </button>
+          <div class="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-indigo-50 border border-indigo-100 text-indigo-700 px-3.5 py-2 rounded-full">
+            <i data-lucide="folder-git" class="w-3.5 h-3.5"></i>
+            <span id="submission-assignment-target">Physics • Class 12-A</span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+          <div class="p-6 md:p-8 border-b border-slate-100">
+            <h3 class="text-sm font-black uppercase tracking-widest text-slate-800">Student Submissions Live Tracker</h3>
+            <p class="text-xs text-slate-400 mt-1">Inspect uploaded PDF submissions, update evaluation status, and write custom feedback remarks.</p>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-150 text-left text-sm text-slate-600">
+              <thead class="bg-[#F8FAFC]/80 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">
+                <tr>
+                  <th scope="col" class="px-6 py-4">Student Info</th>
+                  <th scope="col" class="px-6 py-4">Submitted At</th>
+                  <th scope="col" class="px-6 py-4">Homework PDF File</th>
+                  <th scope="col" class="px-6 py-4">Status Badge</th>
+                  <th scope="col" class="px-6 py-4">Teacher Feedback & Remarks</th>
+                  <th scope="col" class="px-6 py-4 text-right">Evaluation</th>
+                </tr>
+              </thead>
+              <tbody id="submission-list-rows" class="divide-y divide-slate-150 bg-white">
+                <!-- Dynamic Inject -->
+              </tbody>
+            </table>
+          </div>
+
+          <div id="submissions-empty-state" class="hidden py-16 text-center text-slate-400 italic bg-white rounded-b-[2rem]">
+            <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300 mb-3"></i>
+            No homework files uploaded yet for this assignment.
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div> <!-- Close Inner Workspace Wrapper -->
+
+  <!-- Bottom Status Bar -->
+  <footer class="px-6 md:px-8 py-4 bg-white border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-3 z-10">
+    <div class="flex items-center gap-6">
+      <div class="flex items-center gap-2">
+        <div class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" id="footer-db-dot"></div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest" id="footer-db-label">Database Offline</span>
+      </div>
+      <div class="flex items-center gap-2 border-l border-slate-200 pl-6">
+        <div class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></div>
+        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Gemini Pro API Active</span>
+      </div>
+    </div>
+    <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+      v2.4.0 • Built for Modern Classrooms
+    </div>
+  </footer>
+</div> <!-- Close app-screen -->
+
+  <!-- APPLICATION LOGIC ENGINE -->
+  <script>
+    // System Global States
+    let supabaseClient = null;
+    let currentUser = null;
+    let userProfile = null;
+    let isDemoMode = false;
+    
+    // Memory Cache
+    let assignments = [];
+    let submissions = [];
+    let questions = [];
+    
+    // In-Flight creations
+    let uploadedPaperBase64 = null;
+    let uploadedPaperFileName = null;
+    let aiReviewQuestions = [];
+
+    // Current grading assignment
+    let gradingAssignmentId = null;
+
+    // Standard high-quality Demo database to offer instant zero-auth feedback
+    const MOCK_DATA = {
+      profile: {
+        id: "mock-student-123",
+        role: "student",
+        class: "12",
+        section: "Science-A"
+      },
+      assignments: [
+        {
+          id: "mock-assign-1",
+          subject: "Physics",
+          class: "12",
+          section: "Science-A",
+          deadline: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days out
+          paper_url: "#",
+          created_at: new Date().toISOString()
+        },
+        {
+          id: "mock-assign-2",
+          subject: "Mathematics",
+          class: "12",
+          section: "Science-A",
+          deadline: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+          paper_url: "#",
+          created_at: new Date().toISOString()
+        }
+      ],
+      questions: [
+        { id: "mq-1", assignment_id: "mock-assign-1", question_text: "State Gauss's Law in electrostatics and prove it using Coulomb's law.", type: "practice", created_by: "ai" },
+        { id: "mq-2", assignment_id: "mock-assign-1", question_text: "Derive an expression for the capacity of a parallel plate capacitor.", type: "practice", created_by: "ai" },
+        { id: "mq-3", assignment_id: "mock-assign-1", question_text: "Find the work done in rotating an electric dipole in a uniform electric field.", type: "homework", created_by: "ai" },
+        { id: "mq-4", assignment_id: "mock-assign-2", question_text: "Find the local maxima and minima of f(x) = 3x^4 + 4x^3 - 12x^2 + 12.", type: "practice", created_by: "admin" },
+        { id: "mq-5", assignment_id: "mock-assign-2", question_text: "Evaluate the integral: ∫ (x^2 + 1) / (x^4 + 1) dx from 0 to infinity.", type: "homework", created_by: "ai" }
+      ],
+      submissions: [
+        { id: "m-sub-1", assignment_id: "mock-assign-2", student_id: "mock-student-123", file_url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", submitted_at: new Date().toISOString(), status: "checked", remarks: "Excellent step-by-step calculus resolution. Double check your calculation in step 4." }
+      ]
+    };
+
+    const MOCK_TEACHER_PROFILE = {
+      id: "mock-teacher-789",
+      role: "admin",
+      class: null,
+      section: null
+    };
+
+    // System Initializer
+    window.addEventListener('DOMContentLoaded', async () => {
+      // 1. Trace and initialize Supabase client
+      const isConfigured = window.SUPABASE_URL && window.SUPABASE_URL !== "https://your-project-id.supabase.co";
+      
+      const dbDot = document.getElementById('footer-db-dot');
+      const dbLabel = document.getElementById('footer-db-label');
+
+      if (isConfigured) {
+        document.getElementById('config-banner').classList.add('hidden');
+        if (dbDot && dbLabel) {
+          dbDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse";
+          dbLabel.innerText = "Database Online (Real)";
+        }
+        try {
+          supabaseClient = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+          // Auto trace active auth
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session) {
+            currentUser = session.user;
+            await loadUserProfile();
+          } else {
+            showAuth();
+          }
+        } catch (err) {
+          console.error("Supabase fail, launching fallback warning", err);
+          showConfigWarning();
+        }
+      } else {
+        showConfigWarning();
+        if (dbDot && dbLabel) {
+          dbDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+          dbLabel.innerText = "Database Offline (Demo Mode)";
+        }
+        showAuth();
+      }
+      
+      hideLoading();
+      lucide.createIcons();
+    });
+
+    // Toggle Warning and setup details
+    function showConfigWarning() {
+      document.getElementById('config-banner').classList.remove('hidden');
+    }
+    
+    function dismissConfigBanner() {
+      document.getElementById('config-banner').classList.add('hidden');
+    }
+
+    function showLoading(msg = "Processing...") {
+      const loader = document.getElementById('global-loading');
+      loader.querySelector('p').innerText = msg;
+      loader.classList.remove('hidden');
+      loader.classList.remove('opacity-0');
+    }
+
+    function hideLoading() {
+      const loader = document.getElementById('global-loading');
+      loader.classList.add('opacity-0');
+      setTimeout(() => loader.classList.add('hidden'), 300);
+    }
+
+    // Switch between Auth Form screens
+    let activeAuthTab = 'login';
+    function switchAuthTab(tab) {
+      activeAuthTab = tab;
+      const loginBtn = document.getElementById('tab-login');
+      const signupBtn = document.getElementById('tab-signup');
+      const signupFields = document.getElementById('signup-fields');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+      if (tab === 'signup') {
+        loginBtn.className = "w-1/2 pb-3 text-center font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300";
+        signupBtn.className = "w-1/2 pb-3 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600";
+        signupFields.classList.remove('hidden');
+        submitBtn.innerText = "Create Account";
+      } else {
+        signupBtn.className = "w-1/2 pb-3 text-center font-medium text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300";
+        loginBtn.className = "w-1/2 pb-3 text-center font-semibold text-sm border-b-2 border-indigo-600 text-indigo-600";
+        signupFields.classList.add('hidden');
+        submitBtn.innerText = "Sign In";
+      }
+      lucide.createIcons();
+    }
+
+    function toggleSignupRoleFields() {
+      const selectedRole = document.querySelector('input[name="role"]:checked').value;
+      const studentFields = document.getElementById('student-class-fields');
+      if (selectedRole === 'student') {
+        studentFields.classList.remove('hidden');
+      } else {
+        studentFields.classList.add('hidden');
+      }
+    }
+
+    // Interactive Toast Notify UI Component
+    function triggerToast(message, type = "success") {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-indigo-600 text-white',
+        warn: 'bg-amber-500 text-slate-950'
+      };
+
+      const icons = {
+        success: 'check-circle',
+        error: 'x-circle',
+        info: 'info',
+        warn: 'alert-triangle'
+      };
+
+      toast.className = `flex items-center gap-3 px-4 py-3.5 rounded-xl shadow-lg pointer-events-auto transform transition duration-300 translate-y-2 opacity-0 ${colors[type]}`;
+      toast.innerHTML = `
+        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+        <span class="text-xs font-semibold">${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // Trigger animations
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      // Dismiss automatically
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Run Sandbox demo mode
+    function enableDemoMode(role = 'student') {
+      isDemoMode = true;
+      
+      // Seed storage memory
+      assignments = [...MOCK_DATA.assignments];
+      questions = [...MOCK_DATA.questions];
+      submissions = [...MOCK_DATA.submissions];
+
+      const dbDot = document.getElementById('footer-db-dot');
+      const dbLabel = document.getElementById('footer-db-label');
+
+      if (role === 'admin') {
+        currentUser = { id: "mock-teacher-789", email: "teacher@homewk.edu" };
+        userProfile = { ...MOCK_TEACHER_PROFILE };
+        triggerToast("Sandbox Teacher Demo Mode Engaged!", "info");
+        if (dbDot && dbLabel) {
+          dbDot.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+          dbLabel.innerText = "Database Offline (Teacher Demo)";
+        }
+      } else {
+        currentUser = { id: "mock-student-123", email: "student@homewk.edu" };
+        userProfile = { ...MOCK_DATA.profile };
+        triggerToast("Sandbox Student Demo Mode Engaged!", "info");
+        if (dbDot && dbLabel) {
+          dbDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+          dbLabel.innerText = "Database Offline (Student Demo)";
+        }
+      }
+
+      document.getElementById('demo-badge').classList.remove('hidden');
+      dismissConfigBanner();
+      hideAuth();
+      showApp();
+    }
+
+    // Toggle View Panels
+    function showAuth() {
+      document.getElementById('auth-screen').classList.remove('hidden');
+      document.getElementById('app-screen').classList.add('hidden');
+    }
+
+    function hideAuth() {
+      document.getElementById('auth-screen').classList.add('hidden');
+    }
+
+    function showApp() {
+      document.getElementById('app-screen').classList.remove('hidden');
+      renderDashboardHeader();
+      
+      if (userProfile.role === 'admin') {
+        document.getElementById('admin-nav-items').classList.remove('hidden');
+        document.getElementById('student-nav-items').classList.add('hidden');
+        switchTab('admin-assignments');
+      } else {
+        document.getElementById('admin-nav-items').classList.add('hidden');
+        document.getElementById('student-nav-items').classList.remove('hidden');
+        switchTab('student-dashboard');
+      }
+    }
+
+    function renderDashboardHeader() {
+      const email = currentUser?.email || "user@school.edu";
+      const userInitials = email.substring(0, 2).toUpperCase();
+
+      // Sidebar email
+      const emailText = document.getElementById('user-email-display');
+      if (emailText) emailText.innerText = email;
+
+      // Header email
+      const headerEmailText = document.getElementById('header-user-email');
+      if (headerEmailText) headerEmailText.innerText = email;
+
+      // Sidebar initials
+      const initialsBadge = document.getElementById('user-avatar-initials-badge') || document.getElementById('user-avatar-initials');
+      if (initialsBadge) initialsBadge.innerText = userInitials;
+
+      // Header initials
+      const headerInitials = document.getElementById('header-avatar-initials');
+      if (headerInitials) headerInitials.innerText = userInitials;
+
+      // Sidebar role
+      const roleText = document.getElementById('sidebar-role');
+      if (roleText) {
+        if (userProfile.role === 'admin') {
+          roleText.innerText = "TEACHER / ADMIN";
+          roleText.className = "text-[10px] text-indigo-400 uppercase tracking-widest font-bold";
+        } else {
+          roleText.innerText = "STUDENT PORTAL";
+          roleText.className = "text-[10px] text-emerald-400 uppercase tracking-widest font-bold";
+        }
+      }
+
+      // Header role label
+      const headerUserRole = document.getElementById('header-user-role');
+      if (headerUserRole) {
+        headerUserRole.innerText = userProfile.role === 'admin' ? "Teacher" : "Student";
+      }
+
+      const headerPortalLabel = document.getElementById('header-portal-label');
+      if (headerPortalLabel) {
+        headerPortalLabel.innerText = userProfile.role === 'admin' ? "Teacher Portal" : "Student Portal";
+      }
+
+      // Sidebar class/section display
+      const classText = document.getElementById('user-class-display');
+      if (classText) {
+        if (userProfile.role === 'admin') {
+          classText.innerText = "Evaluation Center";
+        } else {
+          classText.innerText = `Class ${userProfile.class} • Section ${userProfile.section}`;
+        }
+      }
+    }
+
+    // Handle standard user Sign In / Sign Up
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+
+      if (isDemoMode) {
+        triggerToast("You are currently in Demo Mode. Refresh to use real Supabase Auth.", "warn");
+        return;
+      }
+
+      if (!supabaseClient) {
+        triggerToast("Supabase configuration is missing. Click 'Run Demo Mode' to try without setup.", "error");
+        return;
+      }
+
+      showLoading(activeAuthTab === 'signup' ? "Creating User Profile..." : "Logging you in...");
+
+      try {
+        if (activeAuthTab === 'signup') {
+          const selectedRole = document.querySelector('input[name="role"]:checked').value;
+          const targetClass = document.getElementById('student-class').value;
+          const targetSection = document.getElementById('student-section').value || "Science-A";
+
+          const { data, error } = await supabaseClient.auth.signUp({
+            email,
+            password
+          });
+
+          if (error) throw error;
+          
+          if (!data.user) {
+            throw new Error("Signup initiated, please check your email for confirmation!");
+          }
+
+          // Force insert profile entry immediately
+          const { error: profileErr } = await supabaseClient
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              role: selectedRole,
+              class: selectedRole === 'student' ? targetClass : null,
+              section: selectedRole === 'student' ? targetSection : null
+            });
+
+          if (profileErr) {
+            console.error("Profile insertion error:", profileErr);
+            triggerToast("Auth created but profile setup failed. Contact administrator.", "warn");
+          }
+
+          triggerToast("Account deployed successfully! Please log in.", "success");
+          switchAuthTab('login');
+        } else {
+          // SIGN IN
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) throw error;
+          currentUser = data.user;
+          await loadUserProfile();
+          hideAuth();
+          showApp();
+          triggerToast("Successfully authenticated with Supabase!", "success");
+        }
+      } catch (err) {
+        console.error("Auth Exception:", err);
+        triggerToast(err.message || "Authentication attempt failed.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Fetch profile table records
+    async function loadUserProfile() {
+      if (isDemoMode) return;
+      try {
+        const { data, error } = await supabaseClient
+          .from('profiles')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single();
+
+        if (error) {
+          // If profile does not exist yet (e.g. auth confirmation bypass), auto-generate default student profile
+          console.warn("Profile missing. Creating a fallback student profile.");
+          const { data: newProfile, error: insErr } = await supabaseClient
+            .from('profiles')
+            .insert({
+              id: currentUser.id,
+              role: 'student',
+              class: '12',
+              section: 'Science-A'
+            })
+            .select()
+            .single();
+
+          if (insErr) throw insErr;
+          userProfile = newProfile;
+        } else {
+          userProfile = data;
+        }
+      } catch (err) {
+        console.error("Profile fetch error", err);
+        // Fallback to avoid complete lock-out
+        userProfile = { id: currentUser.id, role: 'student', class: '12', section: 'Science-A' };
+      }
+    }
+
+    function handleLogout() {
+      if (isDemoMode) {
+        isDemoMode = false;
+        currentUser = null;
+        userProfile = null;
+        document.getElementById('demo-badge').classList.add('hidden');
+        showAuth();
+        triggerToast("Demo session cleared.", "info");
+        return;
+      }
+
+      if (supabaseClient) {
+        supabaseClient.auth.signOut();
+      }
+      currentUser = null;
+      userProfile = null;
+      showAuth();
+    }
+
+    // Tab Switch Controller
+    function switchTab(tabId) {
+      const tabs = ['student-dashboard', 'admin-assignments', 'admin-create', 'admin-submissions'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) {
+          if (t === tabId) {
+            el.classList.remove('hidden');
+          } else {
+            el.classList.add('hidden');
+          }
+        }
+      });
+
+      // Highlight active sidebar navigation buttons
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition text-slate-500 hover:bg-slate-50 hover:text-slate-800";
+      });
+
+      const activeNavBtn = document.getElementById(`nav-${tabId}`);
+      if (activeNavBtn) {
+        activeNavBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition bg-indigo-600 text-white shadow-lg shadow-indigo-100";
+      }
+
+      // Load specific data on tab switch
+      if (tabId === 'student-dashboard') {
+        loadStudentDashboard();
+      } else if (tabId === 'admin-assignments') {
+        loadAdminAssignments();
+      } else if (tabId === 'admin-create') {
+        resetCreateForm();
+      }
+
+      lucide.createIcons();
+    }
+
+    // =============================================
+    // STUDENT CONTROLLER FUNCTIONS
+    // =============================================
+
+    async function loadStudentDashboard() {
+      showLoading("Syncing worksheets...");
+      try {
+        if (!isDemoMode && supabaseClient) {
+          // Real Supabase select
+          const { data: assignData, error: assignErr } = await supabaseClient
+            .from('assignments')
+            .select('*')
+            .order('deadline', { ascending: true });
+
+          if (assignErr) throw assignErr;
+          assignments = assignData || [];
+
+          // Load questions for assignments
+          const assignIds = assignments.map(a => a.id);
+          if (assignIds.length > 0) {
+            const { data: quesData, error: quesErr } = await supabaseClient
+              .from('questions')
+              .select('*')
+              .in('assignment_id', assignIds);
+            
+            if (quesErr) throw quesErr;
+            questions = quesData || [];
+
+            // Load student submissions
+            const { data: subData, error: subErr } = await supabaseClient
+              .from('submissions')
+              .select('*')
+              .eq('student_id', currentUser.id);
+
+            if (subErr) throw subErr;
+            submissions = subData || [];
+          } else {
+            questions = [];
+            submissions = [];
+          }
+        }
+
+        renderStudentWorksheets();
+      } catch (err) {
+        console.error("Dashboard failed to sync:", err);
+        triggerToast("Failed to load real database records. Check console details.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderStudentWorksheets() {
+      const container = document.getElementById('student-assignments-list');
+      const emptyState = document.getElementById('student-empty-state');
+      container.innerHTML = "";
+
+      // Class 11 vs 12 Filtering
+      const filteredAssignments = assignments.filter(a => {
+        return a.class.toString() === userProfile.class.toString() &&
+               a.section.toLowerCase() === userProfile.section.toLowerCase();
+      });
+
+      if (filteredAssignments.length === 0) {
+        emptyState.classList.remove('hidden');
+        document.getElementById('student-stat-pending').innerText = "0";
+        document.getElementById('student-stat-submitted').innerText = "0";
+        document.getElementById('student-stat-checked').innerText = "0";
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      let pendingCount = 0;
+      let submittedCount = 0;
+      let checkedCount = 0;
+
+      filteredAssignments.forEach(assign => {
+        const assignmentQuestions = questions.filter(q => q.assignment_id === assign.id);
+        const practiceQ = assignmentQuestions.filter(q => q.type === 'practice');
+        const homeworkQ = assignmentQuestions.filter(q => q.type === 'homework');
+
+        // Check submission record
+        const studentSub = submissions.find(s => s.assignment_id === assign.id);
+        
+        let statusBadge = '';
+        if (!studentSub) {
+          statusBadge = `<span class="bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Not Submitted</span>`;
+          pendingCount++;
+        } else if (studentSub.status === 'pending') {
+          statusBadge = `<span class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span> Pending Review</span>`;
+          submittedCount++;
+        } else if (studentSub.status === 'checked') {
+          statusBadge = `<span class="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Checked & Graded</span>`;
+          checkedCount++;
+        }
+
+        const deadlineDate = new Date(assign.deadline);
+        const isOverdue = deadlineDate < new Date() && !studentSub;
+        const deadlineLabel = isOverdue 
+          ? `<span class="text-rose-600 font-bold">Overdue: ${deadlineDate.toLocaleDateString()}</span>`
+          : `<span>Due: ${deadlineDate.toLocaleDateString()}</span>`;
+
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:scale-[1.005] hover:shadow-md transition-all duration-300";
+        card.innerHTML = `
+          <!-- Card Header -->
+          <div class="p-6 md:p-8 border-b border-slate-150 bg-[#F8FAFC]/60">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">${assign.subject}</span>
+                <h4 class="text-xl font-bold tracking-tight text-slate-800 mt-3 underline decoration-indigo-100 decoration-4 underline-offset-4">Class Worksheet #${assign.id.substring(0,4).toUpperCase()}</h4>
+                <div class="flex items-center gap-3 text-xs text-slate-500 mt-3">
+                  <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> ${deadlineLabel}</span>
+                  <span>•</span>
+                  <span class="flex items-center gap-1"><i data-lucide="help-circle" class="w-3.5 h-3.5 text-slate-400"></i> ${assignmentQuestions.length} Problems</span>
+                </div>
+              </div>
+              <div>
+                ${statusBadge}
+              </div>
+            </div>
+          </div>
+
+          <!-- Card Body -->
+          <div class="p-6 md:p-8 flex-1 space-y-6 bg-white">
+            <!-- Source material -->
+            ${assign.paper_url && assign.paper_url !== '#' ? `
+              <div class="flex items-center justify-between p-4 bg-[#F8FAFC] border border-slate-200 rounded-2xl shadow-sm">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                  </div>
+                  <span class="text-xs font-bold text-slate-700">Source Question Paper</span>
+                </div>
+                <a href="${assign.paper_url}" target="_blank" class="text-xs font-bold text-indigo-650 hover:underline flex items-center gap-1 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                  View PDF <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              </div>
+            ` : ''}
+
+            <!-- Practice Questions Section -->
+            <div class="space-y-3 bg-indigo-50/20 border border-indigo-100/40 rounded-2xl p-5">
+              <h5 class="text-xs font-black uppercase tracking-widest text-indigo-700 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Practice Questions (In-Class Prep)
+              </h5>
+              <ol class="divide-y divide-indigo-100/30 text-sm text-slate-750 space-y-3 pl-1">
+                ${practiceQ.map((q, idx) => `
+                  <li class="pt-2 flex gap-3">
+                    <span class="font-mono font-black text-indigo-500">${idx+1}.</span>
+                    <div class="flex-1 text-slate-700 font-medium leading-relaxed">${q.question_text}</div>
+                  </li>
+                `).join('') || '<p class="text-xs italic text-slate-400">No practice questions for this assignment.</p>'}
+              </ol>
+            </div>
+
+            <!-- Homework Task Questions Section -->
+            <div class="space-y-3 bg-amber-50/25 border border-amber-150/40 rounded-2xl p-5">
+              <h5 class="text-xs font-black uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
+                <i data-lucide="home" class="w-3.5 h-3.5"></i> Homework Questions (Submit for grading)
+              </h5>
+              <ol class="divide-y divide-amber-100/30 text-sm text-slate-750 space-y-3 pl-1">
+                ${homeworkQ.map((q, idx) => `
+                  <li class="pt-2 flex gap-3">
+                    <span class="font-mono font-black text-amber-500">${idx+1}.</span>
+                    <div class="flex-1 text-slate-700 font-medium leading-relaxed">${q.question_text}</div>
+                  </li>
+                `).join('') || '<p class="text-xs italic text-slate-400">No homework questions.</p>'}
+              </ol>
+            </div>
+
+            <!-- Upload submission portal -->
+            <div class="pt-4 border-t border-slate-100 space-y-3">
+              <h5 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Assignment submission Portal</h5>
+              
+              ${!studentSub ? `
+                <div class="space-y-3">
+                  <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 bg-[#F8FAFC] hover:border-indigo-500 hover:bg-indigo-50/20 transition-all flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                        <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                      </div>
+                      <div>
+                        <p class="text-sm font-bold text-slate-800">Upload Homework File</p>
+                        <p class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mt-0.5">PDF or Image standard format</p>
+                      </div>
+                    </div>
+                    <div>
+                      <input type="file" id="sub-file-${assign.id}" accept="application/pdf,image/*" class="hidden" onchange="handleSubmissionUpload('${assign.id}')">
+                      <button onclick="document.getElementById('sub-file-${assign.id}').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-3 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-none transition-all">
+                        Select File
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ` : `
+                <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#F8FAFC] px-4 py-3 rounded-xl border border-slate-200">
+                    <span class="font-bold text-slate-600 text-xs uppercase tracking-wider">Your Submitted File:</span>
+                    <a href="${studentSub.file_url}" target="_blank" class="text-indigo-600 hover:underline font-bold text-xs flex items-center gap-1">
+                      Download Submitted Homework <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    </a>
+                  </div>
+
+                  <div class="space-y-2">
+                    <span class="font-black text-slate-400 uppercase tracking-widest text-[10px] block">Evaluation Feedback:</span>
+                    ${studentSub.status === 'checked' ? `
+                      <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 leading-relaxed font-semibold text-xs flex gap-2.5 items-start">
+                        <i data-lucide="message-square-quote" class="w-4 h-4 text-emerald-600 mt-0.5"></i>
+                        <div>${studentSub.remarks || "Work evaluated. No written feedback."}</div>
+                      </div>
+                    ` : `
+                      <div class="p-4 rounded-xl bg-indigo-50/50 border border-indigo-100 text-indigo-700 italic text-xs">
+                        Teacher is currently evaluating your answer sheet. Check back later!
+                      </div>
+                    `}
+                  </div>
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      document.getElementById('student-stat-pending').innerText = pendingCount;
+      document.getElementById('student-stat-submitted').innerText = submittedCount;
+      document.getElementById('student-stat-checked').innerText = checkedCount;
+
+      lucide.createIcons();
+    }
+
+    // Handles student uploading homework pdf/image
+    async function handleSubmissionUpload(assignmentId) {
+      const fileInput = document.getElementById(`sub-file-${assignmentId}`);
+      if (!fileInput || fileInput.files.length === 0) return;
+
+      const file = fileInput.files[0];
+      showLoading("Uploading submission...");
+
+      try {
+        let finalFileUrl = "";
+
+        if (isDemoMode) {
+          finalFileUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+          
+          submissions.push({
+            id: "m-sub-" + Date.now(),
+            assignment_id: assignmentId,
+            student_id: currentUser.id,
+            file_url: finalFileUrl,
+            submitted_at: new Date().toISOString(),
+            status: "pending",
+            remarks: ""
+          });
+
+          triggerToast("Demo submission uploaded successfully!", "success");
+        } else {
+          // Real Supabase storage & table inserts
+          const fileExt = file.name.split('.').pop();
+          const fileName = `submissions/${currentUser.id}/${assignmentId}_${Date.now()}.${fileExt}`;
+          
+          const { data, error } = await supabaseClient.storage
+            .from('homewk-files')
+            .upload(fileName, file, { cacheControl: '3600', upsert: true });
+
+          if (error) throw error;
+
+          const { data: { publicUrl } } = supabaseClient.storage
+            .from('homewk-files')
+            .getPublicUrl(fileName);
+
+          finalFileUrl = publicUrl;
+
+          // Push into submissions public database table
+          const { error: insertErr } = await supabaseClient
+            .from('submissions')
+            .insert({
+              assignment_id: assignmentId,
+              student_id: currentUser.id,
+              file_url: finalFileUrl,
+              status: 'pending'
+            });
+
+          if (insertErr) throw insertErr;
+          triggerToast("Homework submitted successfully to the cloud!", "success");
+        }
+
+        // Refresh view
+        await loadStudentDashboard();
+      } catch (err) {
+        console.error("Submission failed:", err);
+        triggerToast("Failed to upload. Make sure the storage bucket 'homewk-files' exists and is public.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+
+    // =============================================
+    // ADMIN TEACHER CONTROLLER FUNCTIONS
+    // =============================================
+
+    async function loadAdminAssignments() {
+      showLoading("Loading homework panels...");
+      try {
+        if (!isDemoMode && supabaseClient) {
+          const { data: assignData, error: assignErr } = await supabaseClient
+            .from('assignments')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (assignErr) throw assignErr;
+          assignments = assignData || [];
+
+          if (assignments.length > 0) {
+            const assignIds = assignments.map(a => a.id);
+            const { data: qData, error: qErr } = await supabaseClient
+              .from('questions')
+              .select('*')
+              .in('assignment_id', assignIds);
+            
+            if (qErr) throw qErr;
+            questions = qData || [];
+
+            const { data: subData, error: subErr } = await supabaseClient
+              .from('submissions')
+              .select('*')
+              .in('assignment_id', assignIds);
+
+            if (subErr) throw subErr;
+            submissions = subData || [];
+          } else {
+            questions = [];
+            submissions = [];
+          }
+        }
+
+        renderAdminAssignments();
+      } catch (err) {
+        console.error("Failed to sync assignments for admin:", err);
+        triggerToast("Failed to retrieve real teacher portal data.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderAdminAssignments() {
+      const container = document.getElementById('admin-assignments-grid');
+      const emptyState = document.getElementById('admin-empty-state');
+      container.innerHTML = "";
+
+      const filterClass = document.getElementById('filter-class').value;
+      const filterSection = document.getElementById('filter-section').value.trim().toLowerCase();
+      const filterSubject = document.getElementById('filter-subject').value.trim().toLowerCase();
+
+      // Apply filtering
+      const filtered = assignments.filter(a => {
+        if (filterClass !== 'All' && a.class.toString() !== filterClass.toString()) return false;
+        if (filterSection && !a.section.toLowerCase().includes(filterSection)) return false;
+        if (filterSubject && !a.subject.toLowerCase().includes(filterSubject)) return false;
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      filtered.forEach(assign => {
+        const assignQuestions = questions.filter(q => q.assignment_id === assign.id);
+        const assignSubmissions = submissions.filter(s => s.assignment_id === assign.id);
+        const pendingSubs = assignSubmissions.filter(s => s.status === 'pending');
+
+        const card = document.createElement('div');
+        card.className = "bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col md:flex-row hover:shadow-md transition-all duration-300";
+        card.innerHTML = `
+          <!-- Assignment Meta Details -->
+          <div class="p-6 md:p-8 md:w-80 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col justify-between bg-[#F8FAFC]/50">
+            <div class="space-y-5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="bg-indigo-50 border border-indigo-100 text-indigo-700 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">${assign.subject}</span>
+                <span class="bg-slate-100 border border-slate-200 text-slate-800 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider">Class ${assign.class}-${assign.section}</span>
+              </div>
+              <div>
+                <h4 class="text-xl font-bold tracking-tight text-slate-800 underline decoration-indigo-200 decoration-4 underline-offset-4">Worksheet #${assign.id.substring(0,4).toUpperCase()}</h4>
+                <p class="text-[10px] text-slate-400 font-mono mt-2">ID: ${assign.id}</p>
+              </div>
+              <div class="space-y-3 text-xs text-slate-600 bg-white p-4 rounded-2xl border border-slate-150">
+                <p class="flex items-center gap-2"><i data-lucide="clock" class="w-4 h-4 text-slate-400"></i> <span class="font-semibold">Due:</span> ${new Date(assign.deadline).toLocaleDateString()}</p>
+                <p class="flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i> <span class="font-semibold">Paper:</span> ${assign.paper_url !== '#' ? `<a href="${assign.paper_url}" target="_blank" class="text-indigo-600 hover:underline">View PDF</a>` : 'None'}</p>
+              </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-150 mt-6 flex gap-2">
+              <button onclick="viewSubmissions('${assign.id}')" class="flex-1 inline-flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold text-xs px-4 py-3 rounded-xl hover:bg-indigo-700 transition shadow-lg shadow-indigo-100 hover:shadow-none relative">
+                Submissions
+                ${pendingSubs.length > 0 ? `
+                  <span class="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center border-2 border-white text-[9px] animate-bounce">
+                    ${pendingSubs.length}
+                  </span>
+                ` : ''}
+              </button>
+              <button onclick="deleteAssignment('${assign.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-600 p-3 rounded-xl transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Question Previews inside Admin list -->
+          <div class="p-6 md:p-8 flex-1 space-y-6 bg-white">
+            <h5 class="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+              <i data-lucide="help-circle" class="w-4 h-4 text-slate-400"></i> Worksheet Curriculum problems (${assignQuestions.length})
+            </h5>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="p-5 rounded-2xl bg-indigo-50/20 border border-indigo-100/40 space-y-3">
+                <h6 class="text-[10px] font-black uppercase text-indigo-700 tracking-widest flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span> In-Class Practice
+                </h6>
+                <ul class="text-xs text-slate-700 space-y-2.5 max-h-48 overflow-y-auto no-scrollbar">
+                  ${assignQuestions.filter(q => q.type === 'practice').map((q, idx) => `
+                    <li class="flex gap-2"><span class="font-bold text-indigo-500">${idx+1}.</span> <span class="flex-1 text-slate-650 leading-relaxed">${q.question_text}</span></li>
+                  `).join('') || '<p class="text-slate-400 italic">None</p>'}
+                </ul>
+              </div>
+
+              <div class="p-5 rounded-2xl bg-amber-50/25 border border-amber-150/45 space-y-3">
+                <h6 class="text-[10px] font-black uppercase text-amber-700 tracking-widest flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 bg-amber-500 rounded-full"></span> Homework Worksheet
+                </h6>
+                <ul class="text-xs text-slate-700 space-y-2.5 max-h-48 overflow-y-auto no-scrollbar">
+                  ${assignQuestions.filter(q => q.type === 'homework').map((q, idx) => `
+                    <li class="flex gap-2"><span class="font-bold text-amber-500">${idx+1}.</span> <span class="flex-1 text-slate-650 leading-relaxed">${q.question_text}</span></li>
+                  `).join('') || '<p class="text-slate-400 italic">None</p>'}
+                </ul>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    async function deleteAssignment(assignId) {
+      if (!confirm("Are you sure you want to delete this homework worksheet and all accompanying submissions?")) return;
+      showLoading("Deleting assignment...");
+
+      try {
+        if (isDemoMode) {
+          assignments = assignments.filter(a => a.id !== assignId);
+          questions = questions.filter(q => q.assignment_id !== assignId);
+          submissions = submissions.filter(s => s.assignment_id !== assignId);
+          triggerToast("Demo assignment deleted successfully.", "success");
+        } else {
+          // Real Supabase deletes (cascades automatically for questions & submissions if referencing)
+          const { error } = await supabaseClient
+            .from('assignments')
+            .delete()
+            .eq('id', assignId);
+
+          if (error) throw error;
+          triggerToast("Assignment database rows purged.", "success");
+        }
+
+        await loadAdminAssignments();
+      } catch (err) {
+        console.error("Purge error", err);
+        triggerToast("Failed to delete records.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+
+    // =============================================
+    // CREATION & AI WORKFLOW GENERATION
+    // =============================================
+
+    function resetCreateForm() {
+      document.getElementById('create-subject').value = "";
+      document.getElementById('create-section').value = "Science-A";
+      document.getElementById('create-deadline').value = new Date(Date.now() + 86400000 * 3).toISOString().slice(0,16); // 3 days default
+      document.getElementById('create-ai-count').value = 3;
+      document.getElementById('count-value').innerText = "3 Questions";
+      
+      uploadedPaperBase64 = null;
+      uploadedPaperFileName = null;
+      document.getElementById('paper-filename').innerText = "PDF standard limit 50MB";
+      
+      aiReviewQuestions = [];
+      renderReviewQuestions();
+    }
+
+    // Capture Local PDF Upload, convert to Base64
+    function handlePaperUpload(input) {
+      if (input.files.length === 0) return;
+      const file = input.files[0];
+      
+      uploadedPaperFileName = file.name;
+      document.getElementById('paper-filename').innerHTML = `Selected: <span class="text-emerald-600 font-bold font-mono">${file.name}</span>`;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        uploadedPaperBase64 = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Trigger local API route /api/generate-questions to use Gemini model
+    async function triggerAiGeneration() {
+      if (!uploadedPaperBase64) {
+        triggerToast("Please upload a PDF source paper to generate matching curriculum problems.", "warn");
+        return;
+      }
+
+      const count = document.getElementById('create-ai-count').value;
+      const generateScreen = document.getElementById('ai-generating-screen');
+      const reviewCard = document.getElementById('ai-questions-review-card');
+
+      generateScreen.classList.remove('hidden');
+      reviewCard.classList.add('hidden');
+
+      // Setup simulated UI state changes
+      const title = document.getElementById('ai-loading-title');
+      const subtitle = document.getElementById('ai-loading-subtitle');
+      const step = document.getElementById('ai-status-step');
+
+      const phases = [
+        { title: "Analyzing Exam Syllabus...", sub: "Gemini is extracting high-school senior standard blueprints.", step: "Phase 1/3: Reading topic structure" },
+        { title: "Reviewing Cognitive Depth...", sub: "Measuring exam style, topic balance, and target difficulty.", step: "Phase 2/3: Generating matching questions" },
+        { title: "Drafting Worksheets...", sub: "Synthesizing practice tasks and homework problems.", step: "Phase 3/3: Parsing responses into review board" }
+      ];
+
+      let phaseIdx = 0;
+      const interval = setInterval(() => {
+        if (phaseIdx < phases.length) {
+          title.innerText = phases[phaseIdx].title;
+          subtitle.innerText = phases[phaseIdx].sub;
+          step.innerText = phases[phaseIdx].step;
+          phaseIdx++;
+        }
+      }, 3000);
+
+      try {
+        const response = await fetch('/api/generate-questions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pdfBase64: uploadedPaperBase64,
+            count: count
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to trigger Gemini API serverless function.");
+        }
+
+        aiReviewQuestions = data.questions || [];
+        renderReviewQuestions();
+        triggerToast(`Successfully loaded ${aiReviewQuestions.length} AI-generated questions!`, "success");
+      } catch (err) {
+        console.error("Gemini invocation error", err);
+        triggerToast(err.message || "Could not reach AI Serverless generator. Double check GEMINI_API_KEY.", "error");
+        
+        // Fallback placeholder questions to avoid rendering a broken screen for offline-testing
+        aiReviewQuestions = [
+          { question_text: "State Gauss's Law in electrostatics and prove it using Coulomb's law.", type: "practice" },
+          { question_text: "Derive an expression for the capacity of a parallel plate capacitor.", type: "practice" },
+          { question_text: "Define electric field intensity. Write its SI unit and dimensional formula.", type: "homework" },
+          { question_text: "Find the work done in rotating an electric dipole in a uniform electric field.", type: "homework" }
+        ];
+        renderReviewQuestions();
+        triggerToast("Loaded mock worksheets in fallback review board.", "warn");
+      } finally {
+        clearInterval(interval);
+        generateScreen.classList.add('hidden');
+        reviewCard.classList.remove('hidden');
+      }
+    }
+
+    function renderReviewQuestions() {
+      const practiceContainer = document.getElementById('review-list-practice');
+      const homeworkContainer = document.getElementById('review-list-homework');
+
+      const practiceQs = aiReviewQuestions.filter(q => q.type === 'practice');
+      const homeworkQs = aiReviewQuestions.filter(q => q.type === 'homework');
+
+      // Populate Practice Board
+      if (practiceQs.length === 0) {
+        practiceContainer.innerHTML = `<p class="text-sm text-slate-400 italic">No questions added yet.</p>`;
+      } else {
+        practiceContainer.innerHTML = practiceQs.map((q, localIdx) => {
+          // Find original index
+          const originalIdx = aiReviewQuestions.indexOf(q);
+          return `
+            <div class="flex items-start gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-150">
+              <span class="font-mono font-bold text-blue-600 mt-2">${localIdx+1}.</span>
+              <textarea onchange="updateReviewText(${originalIdx}, this.value)" class="flex-1 bg-white p-2 rounded-lg border border-slate-200 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none" rows="2">${q.question_text}</textarea>
+              <button onclick="removeReviewQuestion(${originalIdx})" class="text-rose-500 hover:text-rose-700 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Populate Homework Board
+      if (homeworkQs.length === 0) {
+        homeworkContainer.innerHTML = `<p class="text-sm text-slate-400 italic">No questions added yet.</p>`;
+      } else {
+        homeworkContainer.innerHTML = homeworkQs.map((q, localIdx) => {
+          const originalIdx = aiReviewQuestions.indexOf(q);
+          return `
+            <div class="flex items-start gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-150">
+              <span class="font-mono font-bold text-amber-600 mt-2">${localIdx+1}.</span>
+              <textarea onchange="updateReviewText(${originalIdx}, this.value)" class="flex-1 bg-white p-2 rounded-lg border border-slate-200 text-sm focus:ring-1 focus:ring-amber-500 focus:outline-none" rows="2">${q.question_text}</textarea>
+              <button onclick="removeReviewQuestion(${originalIdx})" class="text-rose-500 hover:text-rose-700 p-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      lucide.createIcons();
+    }
+
+    function updateReviewText(idx, text) {
+      if (aiReviewQuestions[idx]) {
+        aiReviewQuestions[idx].question_text = text;
+      }
+    }
+
+    function removeReviewQuestion(idx) {
+      aiReviewQuestions.splice(idx, 1);
+      renderReviewQuestions();
+    }
+
+    function addCustomQuestionReview() {
+      const type = confirm("Create as Practice Question? Click 'Cancel' for Homework Question.") ? 'practice' : 'homework';
+      aiReviewQuestions.push({
+        question_text: "Type custom problem description here.",
+        type: type
+      });
+      renderReviewQuestions();
+    }
+
+    // Submit Complete published assignment to public database
+    async function publishAssignmentAndQuestions() {
+      const subject = document.getElementById('create-subject').value.trim();
+      const targetClass = document.getElementById('create-class').value;
+      const section = document.getElementById('create-section').value.trim();
+      const deadline = document.getElementById('create-deadline').value;
+
+      if (!subject || !section || !deadline) {
+        triggerToast("Please fill in all assignment requirements.", "warn");
+        return;
+      }
+
+      if (aiReviewQuestions.length === 0) {
+        triggerToast("Please include at least one homework or practice question before publishing.", "warn");
+        return;
+      }
+
+      showLoading("Deploying worksheet...");
+
+      try {
+        let finalPaperUrl = "#";
+
+        if (isDemoMode) {
+          const mockAssignId = "m-assign-" + Date.now();
+          
+          assignments.push({
+            id: mockAssignId,
+            subject,
+            class: targetClass,
+            section,
+            deadline: new Date(deadline).toISOString(),
+            paper_url: "#",
+            created_at: new Date().toISOString()
+          });
+
+          aiReviewQuestions.forEach(q => {
+            questions.push({
+              id: "mq-" + Math.random().toString(36).substr(2, 5),
+              assignment_id: mockAssignId,
+              question_text: q.question_text,
+              type: q.type,
+              created_by: 'ai'
+            });
+          });
+
+          triggerToast("Demo Homework published successfully!", "success");
+        } else {
+          // Real Supabase storage & database queries
+          if (document.getElementById('paper-file-input').files.length > 0) {
+            const paperFile = document.getElementById('paper-file-input').files[0];
+            const fileExt = paperFile.name.split('.').pop();
+            const storagePath = `papers/${Date.now()}_source.${fileExt}`;
+            
+            const { data: stData, error: stErr } = await supabaseClient.storage
+              .from('homewk-files')
+              .upload(storagePath, paperFile, { upsert: true });
+
+            if (stErr) throw stErr;
+
+            const { data: { publicUrl } } = supabaseClient.storage
+              .from('homewk-files')
+              .getPublicUrl(storagePath);
+              
+            finalPaperUrl = publicUrl;
+          }
+
+          // Create assignment row
+          const { data: assignRecord, error: assignErr } = await supabaseClient
+            .from('assignments')
+            .insert({
+              subject,
+              class: targetClass,
+              section,
+              deadline: new Date(deadline).toISOString(),
+              paper_url: finalPaperUrl,
+              created_by: currentUser.id
+            })
+            .select()
+            .single();
+
+          if (assignErr) throw assignErr;
+
+          // Prepare list questions
+          const questionPayloads = aiReviewQuestions.map(q => ({
+            assignment_id: assignRecord.id,
+            question_text: q.question_text,
+            type: q.type,
+            created_by: 'ai'
+          }));
+
+          const { error: qErr } = await supabaseClient
+            .from('questions')
+            .insert(questionPayloads);
+
+          if (qErr) throw qErr;
+
+          triggerToast("Worksheet deployed successfully onto live Supabase DB!", "success");
+        }
+
+        switchTab('admin-assignments');
+      } catch (err) {
+        console.error("Publication failed", err);
+        triggerToast("Failed to publish assignment. Check storage bucket setup.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+
+    // =============================================
+    // GRADING FEEDBACK & SUBMISSIONS
+    // =============================================
+
+    async function viewSubmissions(assignmentId) {
+      gradingAssignmentId = assignmentId;
+      const assign = assignments.find(a => a.id === assignmentId);
+      
+      document.getElementById('submission-assignment-target').innerText = `${assign.subject} • Class ${assign.class}-${assign.section}`;
+      switchTab('admin-submissions');
+
+      showLoading("Loading submissions tracker...");
+      try {
+        if (!isDemoMode && supabaseClient) {
+          const { data, error } = await supabaseClient
+            .from('submissions')
+            .eq('assignment_id', assignmentId);
+
+          if (error) throw error;
+          submissions = data || [];
+        }
+
+        renderSubmissionsTable();
+      } catch (err) {
+        console.error("Submissions load error", err);
+        triggerToast("Failed to retrieve live student submissions.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderSubmissionsTable() {
+      const container = document.getElementById('submission-list-rows');
+      const emptyState = document.getElementById('submissions-empty-state');
+      container.innerHTML = "";
+
+      const currentSubs = submissions.filter(s => s.assignment_id === gradingAssignmentId);
+
+      if (currentSubs.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      currentSubs.forEach(sub => {
+        const studentLabel = isDemoMode ? "Anna Issus (student@school.edu)" : sub.student_id;
+        const subDate = new Date(sub.submitted_at).toLocaleString();
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-800 flex items-center justify-center font-bold text-xs uppercase">
+                ${studentLabel.substring(0,2)}
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${studentLabel}</p>
+                <p class="text-[10px] text-slate-400">ID: ${sub.student_id.substring(0,8)}</p>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
+            ${subDate}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <a href="${sub.file_url}" target="_blank" class="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1">
+              Inspect Answers PDF <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+            </a>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            ${sub.status === 'checked' 
+              ? `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Checked</span>`
+              : `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Pending</span>`
+            }
+          </td>
+          <td class="px-6 py-4">
+            <textarea id="remarks-${sub.id}" placeholder="Write evaluation feedback..." class="w-full bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs focus:ring-1 focus:outline-none" rows="1.5">${sub.remarks || ""}</textarea>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-right text-xs">
+            <button onclick="gradeSubmission('${sub.id}')" class="inline-flex items-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i> Graded
+            </button>
+          </td>
+        `;
+        container.appendChild(row);
+      });
+
+      lucide.createIcons();
+    }
+
+    async function gradeSubmission(submissionId) {
+      const remarks = document.getElementById(`remarks-${submissionId}`).value.trim();
+      showLoading("Submitting evaluation feedback...");
+
+      try {
+        if (isDemoMode) {
+          const sub = submissions.find(s => s.id === submissionId);
+          if (sub) {
+            sub.status = 'checked';
+            sub.remarks = remarks;
+          }
+          triggerToast("Submission checked successfully (Sandbox Mode)!", "success");
+        } else {
+          // Real Supabase update
+          const { error } = await supabaseClient
+            .from('submissions')
+            .update({
+              status: 'checked',
+              remarks: remarks
+            })
+            .eq('id', submissionId);
+
+          if (error) throw error;
+          triggerToast("Evaluation deployed to live student database!", "success");
+        }
+
+        // Re-render table
+        await viewSubmissions(gradingAssignmentId);
+      } catch (err) {
+        console.error("Grading failed", err);
+        triggerToast("Failed to save grading feedback.", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+  </script>
+</body>
+</html>

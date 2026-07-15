@@ -1,0 +1,6 @@
+{
+  "name": "HomeWk",
+  "description": "A full-stack homework and practice portal for class 11-12 students with AI-generated questions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
