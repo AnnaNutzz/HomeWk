@@ -1868,6 +1868,7 @@
         if (!isDemoMode && supabaseClient) {
           const { data, error } = await supabaseClient
             .from('submissions')
+            .select('*')
             .eq('assignment_id', assignmentId);
 
           if (error) throw error;
