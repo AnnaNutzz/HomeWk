@@ -737,7 +737,7 @@
     function hideLoading() {
       const loader = document.getElementById('global-loading');
       loader.classList.add('opacity-0');
-      setTimeout(() => loader.classList.add('hidden'), 300);
+      setTimeout(() => { loader.style.display = 'none'; }, 300);
     }
 
     // Switch between Auth Form screens
@@ -851,16 +851,16 @@
 
     // Toggle View Panels
     function showAuth() {
-      document.getElementById('auth-screen').classList.remove('hidden');
-      document.getElementById('app-screen').classList.add('hidden');
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app-screen').style.display = 'none';
     }
-
+    
     function hideAuth() {
-      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('auth-screen').style.display = 'none';
     }
-
+    
     function showApp() {
-      document.getElementById('app-screen').classList.remove('hidden');
+      document.getElementById('app-screen').style.display = 'flex';
       renderDashboardHeader();
       
       if (userProfile.role === 'admin') {
